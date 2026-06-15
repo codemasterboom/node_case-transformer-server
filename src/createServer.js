@@ -1,14 +1,13 @@
 const http = require('http');
-const { detectCase } = require('./convertToCase/detectCase');
 const { convertToCase } = require('./convertToCase/convertToCase');
 
 function createServer() {
   return http.createServer((req, res) => {
-    const requestURL = new URL(req.url, `http://${req.headers.host}`);
-    const params = new URLSearchParams(requestURL.search);
+    const [path, queryString] = req.url.split('?');
+    const params = new URLSearchParams(queryString || '');
     const errorResponse = { errors: [] };
 
-    if (!requestURL.pathname || requestURL.pathname === '/') {
+    if (!path || path === '/') {
       errorResponse.errors.push({
         message:
           `Text to convert is required. ` +
@@ -37,21 +36,21 @@ function createServer() {
     }
 
     if (errorResponse.errors.length > 0) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.writeHead(400, 'Bad request', { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(errorResponse));
     } else {
-      const inputText = requestURL.pathname.slice(1);
-      const fromCase = detectCase(inputText);
-      const outText = convertToCase(inputText, toCase).convertedText;
+      const originalText = path.slice(1);
+      const result = convertToCase(originalText, toCase);
+      const { originalCase, convertedText } = result;
 
       const response = {
-        originalCase: fromCase,
+        originalCase: originalCase,
         targetCase: toCase,
-        originalText: inputText,
-        convertedText: outText,
+        originalText: originalText,
+        convertedText: convertedText,
       };
 
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(200, 'OK', { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(response));
     }
   });
